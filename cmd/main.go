@@ -48,9 +48,9 @@ func cmdDownload() {
 
 func download(cmd *cobra.Command, args []string) error {
 	options := lrts_download.DownloadOptions{
-		Token:  token,
 		Output: output,
 	}
+	options.Token = token
 	return lrts_download.Download(args[0], options)
 }
 

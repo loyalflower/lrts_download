@@ -19,9 +19,19 @@ import (
 	"time"
 )
 
+type CommonOptions struct {
+	Token string
+}
+
 type DownloadOptions struct {
-	Token  string
+	CommonOptions
 	Output string // 输出目录
+}
+
+type commonApiResponse struct {
+	ApiStatus int    `json:"apiStatus"`
+	Msg       string `json:"msg"`
+	Status    int    `json:"status"`
 }
 
 type listEntity struct {
@@ -54,20 +64,18 @@ type listEntity struct {
 }
 
 type listResponse struct {
-	ApiStatus int          `json:"apiStatus"`
-	BookId    int          `json:"bookId"`
-	List      []listEntity `json:"list"`
-	Msg       string       `json:"msg"`
-	Sections  int          `json:"sections"`
-	Status    int          `json:"status"`
-	UserType  int          `json:"userType"`
+	commonApiResponse
+	BookId   int          `json:"bookId"`
+	List     []listEntity `json:"list"`
+	Sections int          `json:"sections"`
+	UserType int          `json:"userType"`
 }
 
 type albumListResponse struct {
-	ApiStatus int         `json:"apiStatus"`
-	Count     int         `json:"count"`
-	Detail    interface{} `json:"detail"`
-	List      []struct {
+	commonApiResponse
+	Count  int         `json:"count"`
+	Detail interface{} `json:"detail"`
+	List   []struct {
 		AudioId                int         `json:"audioId"`
 		BaseEntityId           int         `json:"baseEntityId"`
 		BaseEntityType         int         `json:"baseEntityType"`
@@ -115,13 +123,11 @@ type albumListResponse struct {
 		TypeName               string      `json:"typeName"`
 		UnlockEndTime          int         `json:"unlockEndTime"`
 	} `json:"list"`
-	Msg    string `json:"msg"`
-	Status int    `json:"status"`
 }
 
 type albumEntityListResponse struct {
-	ApiStatus int `json:"apiStatus"`
-	List      []struct {
+	commonApiResponse
+	List []struct {
 		Attach    string `json:"attach"`
 		Id        int    `json:"id"`
 		Md5Code   int    `json:"md5Code"`
@@ -131,8 +137,6 @@ type albumEntityListResponse struct {
 		SectionId string `json:"sectionId"`
 		Type      int    `json:"type"`
 	} `json:"list"`
-	Msg    string `json:"msg"`
-	Status int    `json:"status"`
 }
 
 const (

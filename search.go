@@ -13,6 +13,7 @@ import (
 )
 
 type SearchOptions struct {
+	CommonOptions
 	Type string // 搜索类型，对应 searchOption 参数
 }
 
@@ -173,16 +174,14 @@ type searchBookResult struct {
 }
 
 type searchResponse struct {
-	ApiStatus int `json:"apiStatus"`
-	Data      struct {
+	commonApiResponse
+	Data struct {
 		FolderResult searchFolderResult `json:"folderResult"`
 		AlbumResult  searchAlbumResult  `json:"albumResult"`
 		ReadResult   searchReadResult   `json:"readResult"`
 		Point        string             `json:"point"`
 		BookResult   searchBookResult   `json:"bookResult"`
 	} `json:"data"`
-	Msg    string `json:"msg"`
-	Status int    `json:"status"`
 }
 
 func Search(keywords string, options SearchOptions) error {
@@ -221,29 +220,37 @@ func searchOnResponse(resp *colly.Response) error {
 		return err
 	}
 	tableData := [][]string{}
-	tableHeader := []string{"分类", "书名", "book_id", "作者", "简介"}
+	tableHeader := []string{"分类", "书名", "book_id", "作者", "集数", "简介"}
 	textLimit := func(text string) string {
-		return string([]rune(strings.TrimSpace(text))[:30])
+		return string([]rune(strings.TrimSpace(text))[:25])
 	}
 	if len(result.Data.BookResult.List) > 0 {
 		for _, v := range result.Data.BookResult.List {
-			tableData = append(tableData, []string{searchTypeBook, v.Name, cast.ToString(v.Id), v.Announcer, textLimit(v.RecReason)})
+			tableData = append(tableData, []string{searchTypeBook, v.Name, cast.ToString(v.Id), v.Announcer, cast.ToString(v.Sections), textLimit(v.RecReason)})
 		}
+		tableData = append(tableData, []string{"全部数量", cast.ToString(result.Data.BookResult.Count), "", "", "", ""})
+		tableData = append(tableData, []string{""})
 	}
 	if len(result.Data.AlbumResult.List) > 0 {
 		for _, v := range result.Data.AlbumResult.List {
-			tableData = append(tableData, []string{searchTypeAlbum, v.Name, cast.ToString(v.Id), v.NickName, textLimit(v.Description)})
+			tableData = append(tableData, []string{searchTypeAlbum, v.Name, cast.ToString(v.Id), v.NickName, cast.ToString(v.Sections), textLimit(v.Description)})
 		}
+		tableData = append(tableData, []string{"全部数量", cast.ToString(result.Data.AlbumResult.Count), "", "", "", ""})
+		tableData = append(tableData, []string{""})
 	}
 	if len(result.Data.ReadResult.List) > 0 {
 		for _, v := range result.Data.ReadResult.List {
-			tableData = append(tableData, []string{searchTypeRead, v.Name, cast.ToString(v.Id), v.Author, textLimit(v.RecReason)})
+			tableData = append(tableData, []string{searchTypeRead, v.Name, cast.ToString(v.Id), v.Author, "", textLimit(v.RecReason)})
 		}
+		tableData = append(tableData, []string{"全部结果", cast.ToString(result.Data.ReadResult.Count), "", "", "", ""})
+		tableData = append(tableData, []string{""})
 	}
 	if len(result.Data.FolderResult.List) > 0 {
 		for _, v := range result.Data.FolderResult.List {
-			tableData = append(tableData, []string{searchTypeFolder, v.Name, cast.ToString(v.Id), v.NickName, ""})
+			tableData = append(tableData, []string{searchTypeFolder, v.Name, cast.ToString(v.Id), v.NickName, cast.ToString(v.EntityCount), ""})
 		}
+		tableData = append(tableData, []string{"全部结果", cast.ToString(result.Data.FolderResult.Count), "", "", "", ""})
+		tableData = append(tableData, []string{""})
 	}
 
 	outputTable(tableHeader, tableData)
