@@ -145,6 +145,7 @@ const (
 
 	ctxBookIdFieldName    = "bookId"
 	ctxAudioNameFieldName = "audioName"
+	ctxOrderSortFieldName = "orderSort"
 	// 只是临时存储用的，还不涉及下载
 	ctxMidBookIdFieldName    = "midBookId"
 	ctxMidAudioNameFieldName = "midAudioName"
@@ -290,6 +291,7 @@ func downloadOnResponse(resp *colly.Response, options DownloadOptions) []*colly.
 			r[i] = downloadInitRequest(entity.Path, nil)
 			r[i].Ctx.Put(ctxAudioNameFieldName, entity.Name)
 			r[i].Ctx.Put(ctxBookIdFieldName, cast.ToString(list.BookId))
+			r[i].Ctx.Put(ctxOrderSortFieldName, cast.ToString(entity.Section))
 		}
 		// 继续拉取列表
 		if len(list.List) == cast.ToInt(resp.Request.URL.Query().Get("pageSize")) {
@@ -312,6 +314,7 @@ func downloadOnResponse(resp *colly.Response, options DownloadOptions) []*colly.
 			r[i] = downloadInitRequest(domainDownload+urlPathAlbumEntityList, q)
 			r[i].Ctx.Put(ctxMidAudioNameFieldName, entity.Name)
 			r[i].Ctx.Put(ctxMidBookIdFieldName, q.Get("entityId"))
+			r[i].Ctx.Put(ctxOrderSortFieldName, cast.ToString(entity.Section))
 		}
 		return r
 	} else if resp.Request.URL.Path == urlPathAlbumEntityList {
@@ -335,11 +338,12 @@ func downloadOnResponse(resp *colly.Response, options DownloadOptions) []*colly.
 }
 
 func saveAudio(resp *colly.Response, options DownloadOptions) error {
-	name := resp.Request.Ctx.Get(ctxAudioNameFieldName) + path.Ext(resp.Request.URL.Path)
+	name := resp.Request.Ctx.Get(ctxAudioNameFieldName)
 	bookId := resp.Request.Ctx.Get(ctxBookIdFieldName)
 	if name == "" || bookId == "" {
 		return errors.New("saveAudio failed, name or bookId is empty")
 	}
+	name = resp.Request.Ctx.Get(ctxOrderSortFieldName) + "_" + name + path.Ext(resp.Request.URL.Path)
 	saveDir, dirErr := os.Getwd()
 	if dirErr != nil {
 		return dirErr
