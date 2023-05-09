@@ -16,6 +16,7 @@ import (
 	"path"
 	"path/filepath"
 	"sort"
+	"time"
 )
 
 type DownloadOptions struct {
@@ -62,14 +63,97 @@ type listResponse struct {
 	UserType  int          `json:"userType"`
 }
 
+type albumListResponse struct {
+	ApiStatus int         `json:"apiStatus"`
+	Count     int         `json:"count"`
+	Detail    interface{} `json:"detail"`
+	List      []struct {
+		AudioId                int         `json:"audioId"`
+		BaseEntityId           int         `json:"baseEntityId"`
+		BaseEntityType         int         `json:"baseEntityType"`
+		BestCover              string      `json:"bestCover"`
+		Buy                    int         `json:"buy"`
+		CanUnlock              int         `json:"canUnlock"`
+		Cover                  string      `json:"cover"`
+		HasAiLrc               int         `json:"hasAiLrc"`
+		HasLyric               int         `json:"hasLyric"`
+		Length                 int         `json:"length"`
+		Name                   string      `json:"name"`
+		OnlineTime             int64       `json:"onlineTime"`
+		Path                   string      `json:"path"`
+		PayType                int         `json:"payType"`
+		PlayCount              int         `json:"playCount"`
+		Reason                 string      `json:"reason"`
+		RefId                  int         `json:"refId"`
+		Section                int         `json:"section"`
+		SectionId              string      `json:"sectionId"`
+		Size                   int         `json:"size"`
+		SrcCommentControlType  int         `json:"srcCommentControlType"`
+		SrcEntityCommentCount  int         `json:"srcEntityCommentCount"`
+		SrcEntityCover         string      `json:"srcEntityCover"`
+		SrcEntityDesc          string      `json:"srcEntityDesc"`
+		SrcEntityId            int         `json:"srcEntityId"`
+		SrcEntityName          string      `json:"srcEntityName"`
+		SrcEntityPlayCount     interface{} `json:"srcEntityPlayCount"`
+		SrcEntityRankingInfo   string      `json:"srcEntityRankingInfo"`
+		SrcEntityRankingList   interface{} `json:"srcEntityRankingList"`
+		SrcEntityRankingTarget string      `json:"srcEntityRankingTarget"`
+		SrcEntityTtsRefId      interface{} `json:"srcEntityTtsRefId"`
+		SrcEntityTtsType       interface{} `json:"srcEntityTtsType"`
+		SrcEntityUserCover     string      `json:"srcEntityUserCover"`
+		SrcEntityUserFollow    interface{} `json:"srcEntityUserFollow"`
+		SrcEntityUserId        interface{} `json:"srcEntityUserId"`
+		SrcEntityUserName      string      `json:"srcEntityUserName"`
+		SrcId                  int         `json:"srcId"`
+		SrcRewarded            int         `json:"srcRewarded"`
+		SrcSection             int         `json:"srcSection"`
+		SrcSectionId           string      `json:"srcSectionId"`
+		SrcType                int         `json:"srcType"`
+		Strategy               int         `json:"strategy"`
+		TmeId                  int         `json:"tmeId"`
+		TypeId                 int         `json:"typeId"`
+		TypeName               string      `json:"typeName"`
+		UnlockEndTime          int         `json:"unlockEndTime"`
+	} `json:"list"`
+	Msg    string `json:"msg"`
+	Status int    `json:"status"`
+}
+
+type albumEntityListResponse struct {
+	ApiStatus int `json:"apiStatus"`
+	List      []struct {
+		Attach    string `json:"attach"`
+		Id        int    `json:"id"`
+		Md5Code   int    `json:"md5Code"`
+		Path      string `json:"path"`
+		PathMeta  string `json:"pathMeta"`
+		Section   int    `json:"section"`
+		SectionId string `json:"sectionId"`
+		Type      int    `json:"type"`
+	} `json:"list"`
+	Msg    string `json:"msg"`
+	Status int    `json:"status"`
+}
+
 const (
 	secret = "iJ0DgxmdC83#I&j@iwg"
 
-	domainDownload  = "http://dapis.mting.info"
-	urlPathBookList = "/yyting/bookclient/ClientGetBookResource.action"
+	domainDownload         = "http://dapis.mting.info"
+	urlPathBookList        = "/yyting/bookclient/ClientGetBookResource.action"
+	urlPathAlbumList       = "/yyting/snsresource/getAblumnAudios.action"
+	urlPathAlbumEntityList = "/yyting/gateway/entityPath.action"
 
 	ctxBookIdFieldName    = "bookId"
 	ctxAudioNameFieldName = "audioName"
+	// 只是临时存储用的，还不涉及下载
+	ctxMidBookIdFieldName    = "midBookId"
+	ctxMidAudioNameFieldName = "midAudioName"
+
+	requestTimeout = 30 * time.Second
+	randomDelay    = 1 * time.Second
+
+	defaultToken = "OqzlvCxt2i_P1SZKF6GjFg**_lK0uCQpm5tN-P6XdFZYawCDKSgeC4anU"
+	defaultIMEI  = "MDI6MDA6MDA6MDA6MDA6DDA="
 )
 
 var (
@@ -83,25 +167,56 @@ var (
 		"pageNum":  []string{"1"},
 		"pageSize": []string{"50"},
 		"sortType": []string{"0"},
-		"token":    []string{"OqzlvCxt2i_P1SZKF6GjFg**_lK0uCQpm5tN-P6XdFZYawCDKSgeC4anU"},
-		"imei":     []string{"MDI6MDA6MDA6MDA6MDA6MDA="},
+		"token":    []string{defaultToken},
+		"imei":     []string{defaultIMEI},
 		"nwt":      []string{"1"},
 		"q":        []string{"1930"},
+	}
+
+	downloadAlbumListHttpQuery = url.Values{
+		"ablumnId": []string{""},
+		"pageNum":  []string{"1"},
+		"pageSize": []string{"10000"},
+		"sortType": []string{"0"},
+		"token":    []string{defaultToken},
+		"imei":     []string{defaultIMEI},
+		"nwt":      []string{"1"},
+		"q":        []string{"2205"},
+	}
+
+	downloadAlbumEntityHttpQuery = url.Values{
+		"entityId":   []string{""},
+		"entityType": []string{"2"},
+		"opType":     []string{"0"},
+		"sections":   []string{"[]"}, // sections id.  [7463598,7463599]
+		"type":       []string{"0"},
+		"token":      []string{defaultToken},
+		"imei":       []string{defaultIMEI},
+		"nwt":        []string{"1"},
+		"q":          []string{"2224"},
 	}
 )
 
 func Download(bookId string, options DownloadOptions) error {
 	c := colly.NewCollector(colly.AllowURLRevisit())
+	c.SetRequestTimeout(requestTimeout)
+	c.Limit(&colly.LimitRule{
+		DomainGlob:  "*",
+		RandomDelay: randomDelay,
+	})
 
 	// create a request queue with 2 consumer threads
 	q, _ := queue.New(
-		5, // Number of consumer threads
+		10, // Number of consumer threads
 		&queue.InMemoryQueueStorage{MaxSize: 10000}, // Use default queue storage
 	)
 
 	c.OnRequest(func(r *colly.Request) {
 		if name := r.Ctx.Get(ctxAudioNameFieldName); name != "" {
 			fmt.Printf("Downloading %s\n", name)
+		}
+		if name := r.Ctx.Get(ctxMidAudioNameFieldName); name != "" {
+			fmt.Printf("Search Resource %s\n", name)
 		}
 	})
 	c.OnResponse(func(resp *colly.Response) {
@@ -157,6 +272,17 @@ func downloadOnResponse(resp *colly.Response, options DownloadOptions) []*colly.
 			return nil
 		}
 		if len(list.List) == 0 {
+			// 如果是第一页就没有数据
+			// 尝试更换其他下载方式
+			if resp.Request.URL.Query().Get("pageNum") == "1" {
+				q := downloadInitQuery("", downloadAlbumListHttpQuery)
+				q.Set("ablumnId", resp.Request.URL.Query().Get("bookId"))
+				r := downloadInitRequest(
+					domainDownload+urlPathAlbumList,
+					q,
+				)
+				return []*colly.Request{r}
+			}
 			return nil
 		}
 		r := make([]*colly.Request, len(list.List))
@@ -171,7 +297,35 @@ func downloadOnResponse(resp *colly.Response, options DownloadOptions) []*colly.
 			values.Set("pageNum", cast.ToString(cast.ToInt(values.Get("pageNum"))+1))
 			r = append(r, downloadInitRequest(domainDownload+urlPathBookList, values))
 		}
-
+		return r
+	} else if resp.Request.URL.Path == urlPathAlbumList {
+		albumList := albumListResponse{}
+		err := json.Unmarshal(resp.Body, &albumList)
+		if err != nil {
+			return nil
+		}
+		r := make([]*colly.Request, len(albumList.List))
+		for i, entity := range albumList.List {
+			q := downloadInitQuery("", downloadAlbumEntityHttpQuery)
+			q.Set("entityId", resp.Request.URL.Query().Get("ablumnId"))
+			q.Set("sections", "["+entity.SectionId+"]")
+			r[i] = downloadInitRequest(domainDownload+urlPathAlbumEntityList, q)
+			r[i].Ctx.Put(ctxMidAudioNameFieldName, entity.Name)
+			r[i].Ctx.Put(ctxMidBookIdFieldName, q.Get("entityId"))
+		}
+		return r
+	} else if resp.Request.URL.Path == urlPathAlbumEntityList {
+		albumEntityList := albumEntityListResponse{}
+		err := json.Unmarshal(resp.Body, &albumEntityList)
+		if err != nil {
+			return nil
+		}
+		r := make([]*colly.Request, len(albumEntityList.List))
+		for i, entity := range albumEntityList.List {
+			r[i] = downloadInitRequest(entity.Path, nil)
+			r[i].Ctx.Put(ctxAudioNameFieldName, resp.Ctx.Get(ctxMidAudioNameFieldName))
+			r[i].Ctx.Put(ctxBookIdFieldName, resp.Ctx.Get(ctxMidBookIdFieldName))
+		}
 		return r
 	} else {
 		saveAudio(resp, options)

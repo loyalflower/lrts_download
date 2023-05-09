@@ -19,8 +19,8 @@ const (
 var (
 	downloadDetailHttpQuery = url.Values{
 		"bookId": []string{""},
-		"token":  []string{"OqzlvCxt2i_P1SZKF6GjFg**_lK0uCQpm5tN-P6XdFZYawCDKSgeC4anU"},
-		"imei":   []string{"MDI6MDA6MDA6MDA6MDA6MDA="},
+		"token":  []string{defaultToken},
+		"imei":   []string{defaultIMEI},
 		"nwt":    []string{"1"},
 		"q":      []string{"2150"},
 	}

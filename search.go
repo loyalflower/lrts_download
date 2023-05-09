@@ -32,8 +32,8 @@ var (
 		"searchOption": []string{"1,2,3,4,5"}, // 书籍 节目 看书 主播 听单
 		"pageSize":     []string{"5"},
 		"type":         []string{"0"},
-		"token":        []string{"OqzlvCxt2i_P1SZKF6GjFg**_lK0uCQpm5tN-P6XdFZYawCDKSgeC4anU"},
-		"imei":         []string{"MDI6MDA6MDA6MDA6MDA6MDA="},
+		"token":        []string{defaultToken},
+		"imei":         []string{defaultIMEI},
 		"nwt":          []string{"1"},
 		"q":            []string{"2150"},
 	}
