@@ -19,7 +19,8 @@ import (
 )
 
 type DownloadOptions struct {
-	Token string
+	Token  string
+	Output string // 输出目录
 }
 
 type listEntity struct {
@@ -104,7 +105,7 @@ func Download(bookId string, options DownloadOptions) error {
 		}
 	})
 	c.OnResponse(func(resp *colly.Response) {
-		r := downloadOnResponse(resp)
+		r := downloadOnResponse(resp, options)
 		if r != nil {
 			for _, v := range r {
 				q.AddRequest(v)
@@ -115,16 +116,18 @@ func Download(bookId string, options DownloadOptions) error {
 		fmt.Println("Request URL:", response.Request.URL, "failed with response:", string(response.Body), "\nError:", err)
 	})
 
-	q.AddRequest(downloadInitRequest(domainDownload+urlPathBookList, downloadInitQuery(bookId)))
+	q.AddRequest(downloadInitRequest(domainDownload+urlPathBookList, downloadInitQuery(bookId, downloadListHttpQuery)))
 	return q.Run(c)
 }
 
-func downloadInitQuery(bookId string) url.Values {
-	httpQuery := make(map[string][]string, len(downloadListHttpQuery))
-	for k, v := range downloadListHttpQuery {
+func downloadInitQuery(bookId string, urlValues url.Values) url.Values {
+	httpQuery := make(map[string][]string, len(urlValues))
+	for k, v := range urlValues {
 		httpQuery[k] = v
 	}
-	httpQuery["bookId"] = []string{bookId}
+	if bookId != "" {
+		httpQuery["bookId"] = []string{bookId}
+	}
 	return httpQuery
 }
 
@@ -143,7 +146,7 @@ func downloadInitRequest(uri string, values url.Values) *colly.Request {
 	return r
 }
 
-func downloadOnResponse(resp *colly.Response) []*colly.Request {
+func downloadOnResponse(resp *colly.Response, options DownloadOptions) []*colly.Request {
 	if resp.StatusCode != 200 {
 		return nil
 	}
@@ -171,13 +174,13 @@ func downloadOnResponse(resp *colly.Response) []*colly.Request {
 
 		return r
 	} else {
-		saveAudio(resp)
+		saveAudio(resp, options)
 	}
 
 	return nil
 }
 
-func saveAudio(resp *colly.Response) error {
+func saveAudio(resp *colly.Response, options DownloadOptions) error {
 	name := resp.Request.Ctx.Get(ctxAudioNameFieldName) + path.Ext(resp.Request.URL.Path)
 	bookId := resp.Request.Ctx.Get(ctxBookIdFieldName)
 	if name == "" || bookId == "" {
@@ -187,7 +190,11 @@ func saveAudio(resp *colly.Response) error {
 	if dirErr != nil {
 		return dirErr
 	}
-	saveDir = filepath.Join(saveDir, bookId)
+	dirName := bookId
+	if options.Output != "" {
+		dirName = options.Output
+	}
+	saveDir = filepath.Join(saveDir, dirName)
 	if _, existsErr := os.Stat(saveDir); os.IsNotExist(existsErr) {
 		mkErr := os.MkdirAll(saveDir, os.ModePerm)
 		if mkErr != nil {
